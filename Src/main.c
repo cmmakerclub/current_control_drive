@@ -328,7 +328,7 @@ void MX_GPIO_Init(void)
 
 volatile void PI_control(void)
 {
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 	
 	Icurrent = center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f);
 	if (Icurrent < 0) Icurrent = 0;
@@ -337,7 +337,7 @@ volatile void PI_control(void)
 	
 	error = Iref - Icurrent;
 	
-	if (error < 50)
+	if (error < 50 && error > -50)
 	{
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
 	}else{
@@ -345,11 +345,26 @@ volatile void PI_control(void)
 	}
  
 	Pwm +=  error*0.01f;
+	
 	if (Pwm >2300) Pwm = 2300;
 	if (Pwm < 0) Pwm = 0;
-	F_drive(Pwm);
 	
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
+	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == GPIO_PIN_SET )
+	{		
+		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == GPIO_PIN_SET )
+		{
+			F_drive(Pwm);
+		}else{
+			R_drive(Pwm);
+		}
+		
+	}else{
+		
+		disable_drive();
+	}
+		
+	
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 }
 
 volatile void F_drive(float tmp)
