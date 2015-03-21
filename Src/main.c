@@ -37,7 +37,7 @@
 
 /* USER CODE BEGIN Includes */
 
-#define center_current   3030.0f //
+#define center_current   3065.0f //
 
 /* USER CODE END Includes */
 
@@ -60,6 +60,7 @@ float a = 0;
 float b = 0;
 float c = 0;
 float d = 0;
+float e = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,11 +75,11 @@ static void MX_TIM17_Init(void);
 /* USER CODE BEGIN PFP */
 
 volatile void PI_control(void);
-
 volatile void F_drive(float tmp);
 volatile void R_drive(float tmp);
 volatile void disable_drive(void);
-
+float Smooth_filter(float alfa, float new_data, float prev_data);
+	
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -144,6 +145,7 @@ int main(void)
 		b = ADC_raw_data[1];
 		c = ADC_raw_data[2];
 		d = ADC_raw_data[3];
+		e = Smooth_filter(0.7f, ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f), e);
 		
   }
   /* USER CODE END 3 */
@@ -356,11 +358,13 @@ volatile void PI_control(void)
 {
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 	
-	Icurrent = center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f);
+//	Icurrent = center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f);
+	Icurrent = Smooth_filter(0.7f, center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f), Icurrent);
 	if (Icurrent < 0) Icurrent = 0;
 	
-	Iref = ((float)ADC_raw_data[1] * 0.5f + (float)ADC_raw_data[3] * 0.5f) * 0.6f;
+//	Iref = ((float)ADC_raw_data[1] * 0.5f + (float)ADC_raw_data[3] * 0.5f) * 0.6f;
 	
+	Iref = Smooth_filter(0.7f, ((float)ADC_raw_data[1] * 0.5f + (float)ADC_raw_data[3] * 0.5f) * 0.6f, Iref);
 	error = Iref - Icurrent;
 	
 	if (error < 50 && error > -50)
@@ -370,7 +374,7 @@ volatile void PI_control(void)
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
 	}
  
-	Pwm +=  error*0.01f;
+	Pwm +=  error*0.05f;
 	
 	if (Pwm >2300) Pwm = 2300;
 	if (Pwm < 0) Pwm = 0;
@@ -437,6 +441,12 @@ volatile void disable_drive(void)
 	TIM3 -> CCR2 = 0;
 	TIM3 -> CCR4 = 0;
 	TIM14 -> CCR1 = 0;
+}
+
+float Smooth_filter(float alfa, float new_data, float prev_data)
+{
+  float output = prev_data + (alfa * (new_data - prev_data));
+  return output;
 }
 /* USER CODE END 4 */
 
