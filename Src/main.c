@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : main.c
-  * Date               : 21/03/2015 14:21:01
+  * Date               : 21/03/2015 17:50:15
   * Description        : Main program body
   ******************************************************************************
   *
@@ -46,6 +46,7 @@ ADC_HandleTypeDef hadc;
 DMA_HandleTypeDef hdma_adc;
 
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim14;
 TIM_HandleTypeDef htim17;
 
 /* USER CODE BEGIN PV */
@@ -67,6 +68,7 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_ADC_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM14_Init(void);
 static void MX_TIM17_Init(void);
 
 /* USER CODE BEGIN PFP */
@@ -103,6 +105,7 @@ int main(void)
   MX_DMA_Init();
   MX_ADC_Init();
   MX_TIM3_Init();
+  MX_TIM14_Init();
   MX_TIM17_Init();
 
   /* USER CODE BEGIN 2 */
@@ -115,11 +118,15 @@ int main(void)
 	// enable Pwm
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+	HAL_TIM_PWM_Start(&htim14, TIM_CHANNEL_1);
+	
+	disable_drive();
 	
 	// enable sampling
 	HAL_TIM_Base_Start_IT(&htim17);
 
-	
+
 	
 
   /* USER CODE END 2 */
@@ -132,7 +139,7 @@ int main(void)
   {
 		HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_0);
 		HAL_Delay(50);
-		
+
 		a = ADC_raw_data[0];
 		b = ADC_raw_data[1];
 		c = ADC_raw_data[2];
@@ -248,6 +255,32 @@ void MX_TIM3_Init(void)
 
   HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2);
 
+  sConfigOC.OCMode = TIM_OCMODE_PWM2;
+  HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4);
+
+}
+
+/* TIM14 init function */
+void MX_TIM14_Init(void)
+{
+
+  TIM_OC_InitTypeDef sConfigOC;
+
+  htim14.Instance = TIM14;
+  htim14.Init.Prescaler = 0;
+  htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim14.Init.Period = 2399;
+  htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  HAL_TIM_Base_Init(&htim14);
+
+  HAL_TIM_PWM_Init(&htim14);
+
+  sConfigOC.OCMode = TIM_OCMODE_PWM2;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  HAL_TIM_PWM_ConfigChannel(&htim14, &sConfigOC, TIM_CHANNEL_1);
+
 }
 
 /* TIM17 init function */
@@ -306,19 +339,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA4 PA5 PA9 PA10 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_9|GPIO_PIN_10;
+  /*Configure GPIO pins : PA5 PA9 PA10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_9|GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
@@ -328,7 +354,7 @@ void MX_GPIO_Init(void)
 
 volatile void PI_control(void)
 {
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 	
 	Icurrent = center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f);
 	if (Icurrent < 0) Icurrent = 0;
@@ -364,36 +390,53 @@ volatile void PI_control(void)
 	}
 		
 	
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 }
 
 volatile void F_drive(float tmp)
 {
+	TIM3->CNT = 0;
+	TIM14->CNT = 0;
+	
 	TIM3 -> CCR1 = 0;
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+	TIM3 -> CCR2 = 0;
+	TIM3 -> CCR4 = 0;
+	TIM14 -> CCR1 = 0;
+//	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 	
 	if (tmp > 2300) tmp = 2300 ;
 	if (tmp < 0)    tmp = 0 ;
 	TIM3 -> CCR2 = tmp;
+	TIM14 -> CCR1 = tmp;
 }
 volatile void R_drive(float tmp)
 {
+	TIM3->CNT = 0;
+	TIM14->CNT = 0;
+	
+	TIM3 -> CCR1 = 0;
 	TIM3 -> CCR2 = 0;
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+	TIM3 -> CCR4 = 0;
+	TIM14 -> CCR1 = 0;
+//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+//	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
 	
 	if (tmp > 2300) tmp = 2300;
 	if (tmp < 0)    tmp = 0;
 	TIM3 -> CCR1 = tmp;
-	
+	TIM3 -> CCR4 = tmp;
 }
 volatile void disable_drive(void)
 {
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+	TIM3->CNT = 0;
+	TIM14->CNT = 0;
+//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+//	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
 	TIM3 -> CCR1 = 0;
 	TIM3 -> CCR2 = 0;
+	TIM3 -> CCR4 = 0;
+	TIM14 -> CCR1 = 0;
 }
 /* USER CODE END 4 */
 
