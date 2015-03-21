@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : main.c
-  * Date               : 21/03/2015 02:01:26
+  * Date               : 21/03/2015 14:21:01
   * Description        : Main program body
   ******************************************************************************
   *
@@ -303,7 +303,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pins : PA2 PA3 */
   GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA4 PA5 PA9 PA10 */
@@ -333,10 +333,17 @@ volatile void PI_control(void)
 	Icurrent = center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f);
 	if (Icurrent < 0) Icurrent = 0;
 	
-	Iref = ((float)ADC_raw_data[1] * 0.5f + (float)ADC_raw_data[3] * 0.5f);
+	Iref = ((float)ADC_raw_data[1] * 0.5f + (float)ADC_raw_data[3] * 0.5f) * 0.6f;
 	
 	error = Iref - Icurrent;
 	
+	if (error < 50)
+	{
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
+	}else{
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
+	}
+ 
 	Pwm +=  error*0.01f;
 	if (Pwm >2300) Pwm = 2300;
 	if (Pwm < 0) Pwm = 0;
