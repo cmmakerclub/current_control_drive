@@ -1,5 +1,5 @@
 #MicroXplorer Configuration settings - do not modify
-#Sat Mar 21 17:50:14 ICT 2015
+#Mon Mar 23 11:48:17 ICT 2015
 ADC.Channel=ADC_CHANNEL_0
 ADC.Channel-5\#ChannelRegularConversion=ADC_CHANNEL_1
 ADC.Channel-7\#ChannelRegularConversion=ADC_CHANNEL_1
