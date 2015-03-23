@@ -38,7 +38,7 @@
 /* USER CODE BEGIN Includes */
 
 #define center_current   3065.0f //
-
+#define offset_zero      105.0f //
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -141,11 +141,11 @@ int main(void)
 		HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_0);
 		HAL_Delay(50);
 
-		a = ADC_raw_data[0];
-		b = ADC_raw_data[1];
-		c = ADC_raw_data[2];
-		d = ADC_raw_data[3];
-		e = Smooth_filter(0.7f, ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f), e);
+//		a = ADC_raw_data[0];
+//		b = ADC_raw_data[1];
+//		c = ADC_raw_data[2];
+//		d = ADC_raw_data[3];
+//		e = Smooth_filter(0.7f, ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f), e);
 		
   }
   /* USER CODE END 3 */
@@ -359,12 +359,12 @@ volatile void PI_control(void)
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 	
 //	Icurrent = center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f);
-	Icurrent = Smooth_filter(0.7f, center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f), Icurrent);
+	Icurrent = Smooth_filter(0.5f, center_current - ((float)ADC_raw_data[0] * 0.5f + (float)ADC_raw_data[2] * 0.5f), Icurrent);
 	if (Icurrent < 0) Icurrent = 0;
 	
 //	Iref = ((float)ADC_raw_data[1] * 0.5f + (float)ADC_raw_data[3] * 0.5f) * 0.6f;
 	
-	Iref = Smooth_filter(0.7f, ((float)ADC_raw_data[1] * 0.5f + (float)ADC_raw_data[3] * 0.5f) * 0.6f, Iref);
+	Iref = Smooth_filter(0.5f, (((float)ADC_raw_data[1] * 0.5f + (float)ADC_raw_data[3] * 0.5f)* 0.6f) - offset_zero, Iref);
 	error = Iref - Icurrent;
 	
 	if (error < 50 && error > -50)
